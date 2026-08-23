@@ -4,6 +4,31 @@ All notable changes to this plugin are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6.0] - 2026-08-23
+
+### Added
+
+- **`POST /api/v1/stores/{storeId}/spark/sync` forces a wallet sync and returns the current balance.**
+  The balance returned by other endpoints is read from the SDK cache without forcing a sync and may lag
+  settlement by up to 20 seconds. The new endpoint forces an explicit sync before reading, so the
+  returned `balanceSats` is current at call time. Requires `btcpay.store.canmodifystoresettings`.
+  Response: `{ "walletRunning": bool, "balanceSats": long, "syncedAt": timestamp }`.
+- **Sweep webhook.** Setting `sweepWebhookUrl` in the sweep configuration causes Flint to POST a JSON
+  payload to that URL after each successful sweep. The payload includes `storeId`, `idempotencyKey`,
+  `txId`, `amountSats`, `feeSats`, `destination`, `destinationMode`, `trigger`, and `completedAt`.
+  Delivery failures are logged as warnings and never retried; the sweep record is the authoritative
+  source. The field is included in `SweepSettings.Clone()` so it survives a seed change.
+- **Sweep configuration warnings.** `GET /api/v1/stores/{storeId}/spark/sweep` now includes a `warnings`
+  array. On mainnet, entries appear when the balance threshold or minimum sweep amount are below the
+  recommended defaults (which were measured on regtest and may not hold on mainnet).
+- **`scripts/setup-stores.sh`** - bash script for headless provisioning of one or more stores via the
+  Greenfield API. Saves each store's recovery phrase (optionally GPG-encrypted) immediately on
+  provisioning, since the API returns it exactly once.
+- **`scripts/flint-logrotate.conf`** - logrotate configuration for `sdk.log`. Uses `copytruncate`
+  because the Rust SDK holds the file handle open; a rename-based rotation leaves the SDK writing to
+  the renamed file.
+- **`docs/railway.md`** - deployment guide for Railway: persistent volume requirements, environment
+  variables, log rotation options, and a post-deploy verification script.
 
 ## [1.1.0] — 2026-09-07
 
@@ -237,6 +262,7 @@ lives in the automation that keeps the plugin watching upstream for the right ch
   scrubber's five regex passes run only on lines that will actually be emitted. Lines that are
   emitted scrub exactly as before.
 
+
 ## [1.0.1] — 2026-08-26
 
 ### Changed
@@ -250,6 +276,7 @@ lives in the automation that keeps the plugin watching upstream for the right ch
   stronger warning for a store manager who is not a server admin. The same disclosure is on the
   Greenfield provisioning endpoint and in SECURITY.md, the README trust model and the trust-model
   document.
+
 
 ## [1.0.0] — 2026-08-26
 
@@ -274,6 +301,7 @@ lives in the automation that keeps the plugin watching upstream for the right ch
   the new `DepositInfo` fields are default-off / ignored. Verified on mainnet against a live
   Lightspark service provider on the test servers; the SDK's own storage schema migrates to
   version 40 on startup.
+
 
 ## [0.1.5.5] — 2026-08-25
 
@@ -327,7 +355,7 @@ lives in the automation that keeps the plugin watching upstream for the right ch
   configuration (with the victim's payment key rotated, so previously leaked copies of the victim's
   string stop resolving).
 
-## [0.1.5.2] — 2026-08-22
+## [0.1.5.2] - 2026-08-22
 
 ### Changed
 
