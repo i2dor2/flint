@@ -82,6 +82,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Lock regeneration needs the .NET SDK: the submodule bump changes the ProjectReference
+      # version constraints (btcpayserver's Build/Version.csproj carries the release number), and
+      # the committed packages.lock.json files must be regenerated to match. Without this step the
+      # bump PR fails CI at "Restore (locked mode)" with NU1004, as seen on chore/btcpayserver-v2.4.3
+      # (run 184, 2026-09-07) — the bump step edited the submodule but never the locks.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
@@ -105,7 +115,19 @@ jobs:
             BTCPayServer.Plugins.Flint/Constants.cs
           sed -i -E "s/\`v[0-9]+\.[0-9]+\.[0-9]+\`\)\./\`v$LATEST\`)./" docs/building.md
 
-          git add btcpayserver BTCPayServer.Plugins.Flint/Constants.cs docs/building.md
+          # Regenerate the committed lock files against the bumped graph, then prove they agree
+          # with it under locked mode — the same property CI's "Restore (locked mode)" checks on
+          # the PR, so a lock that drifts from the csprojs fails here at the bump step, before a
+          # PR anyone has to review even exists. Unlocked restore rewrites them in place; locked
+          # re-restore must then be a no-op.
+          dotnet restore BTCPayServer.Plugins.Flint/BTCPayServer.Plugins.Flint.csproj
+          dotnet restore BTCPayServer.Plugins.Flint.Tests/BTCPayServer.Plugins.Flint.Tests.csproj
+          dotnet restore --locked-mode BTCPayServer.Plugins.Flint/BTCPayServer.Plugins.Flint.csproj
+          dotnet restore --locked-mode BTCPayServer.Plugins.Flint.Tests/BTCPayServer.Plugins.Flint.Tests.csproj
+
+          git add btcpayserver BTCPayServer.Plugins.Flint/Constants.cs docs/building.md \
+            BTCPayServer.Plugins.Flint/packages.lock.json \
+            BTCPayServer.Plugins.Flint.Tests/packages.lock.json
           git status --short
 
       - name: Create branch and commit
