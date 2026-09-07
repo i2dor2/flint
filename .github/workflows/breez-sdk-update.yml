@@ -7,7 +7,10 @@ name: Breez SDK update
 # replaced Dependabot's gitsubmodule ecosystem: weekly plus on-demand, it looks for the newest
 # version breez/spark-sdk has a *published GitHub Release* for (that also exists on NuGet, so
 # the PR can restore), and opens a bump PR only then. Breez.Sdk.Spark is ignored in
-# dependabot.yml so the two do not both propose bumps. A tag-only fix worth shipping early is a
+# dependabot.yml so the two do not both propose bumps; because that ignore proved leaky once the
+# pin format changed (see breez-dependabot-guard.yml), a guard workflow also closes any
+# Dependabot PR that names Breez.Sdk.Spark — the release gate is enforced, not assumed.
+# A tag-only fix worth shipping early is a
 # human decision: bump the PackageReference by hand, exactly as 0.22.2 and 0.22.3 were.
 #
 # Token: default GITHUB_TOKEN, with the same workflow_dispatch re-dispatch trick as

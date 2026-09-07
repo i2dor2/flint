@@ -11,10 +11,17 @@ updates:
   # NuGet packages referenced directly by the plugin project — except Breez.Sdk.Spark, ignored
   # below: Breez tags and pushes patch versions to NuGet with no GitHub Release and no notes
   # (0.22.1 through 0.22.3 all shipped that way), and a Dependabot PR per push is churn, not
-  # signal. .github/workflows/breez-sdk-update.yml is the release-aware replacement — the same
-  # split as the btcpayserver submodule above, for the same reason — proposing a bump only for
-  # versions upstream has published a release for. A tag-only fix worth shipping early is bumped
-  # by hand.
+  # signal. .github/workflows/breez-sdk-update.yml is the release-aware replacement — proposing a
+  # bump only for versions upstream has published a release for. A tag-only fix worth shipping
+  # early is bumped by hand.
+  #
+  # That split once failed silently in the other direction: the ignore below worked while the pin
+  # was a plain version (no bump proposed between 2026-08-22 and 2026-09-02), and stopped working
+  # as soon as the pin became a bracketed exact-version range (7823e2a changed it on 2026-09-02;
+  # Dependabot proposed a PR for tag-only 0.24.1 on 2026-09-03, PR #65). Two countermeasures
+  # since: `versions: ["*"]` re-routes the ignore through the version-pattern matcher, and
+  # .github/workflows/breez-dependabot-guard.yml closes any Dependabot PR that still names
+  # Breez.Sdk.Spark, so a Dependabot quirk can open nothing but noise that dies without a human.
   #
   # Also note: Dependabot's nuget updater resolves the project's ProjectReference to
   # ../btcpayserver/BTCPayServer/BTCPayServer.csproj, which lives in a git submodule; this is
@@ -28,7 +35,11 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     ignore:
+      # The versions condition is not a statement that some versions may be proposed: it matches
+      # every version, on the strength of the incident described above — make the ignore survive
+      # whatever format the PackageReference pin takes next.
       - dependency-name: "Breez.Sdk.Spark"
+        versions: ["*"]
 
   # Test-project NuGet packages -- xunit.v3, and since the move to Microsoft.Testing.Platform that is the
   # whole list; the VSTest host and adapter it used to name here are gone. Separate entry because

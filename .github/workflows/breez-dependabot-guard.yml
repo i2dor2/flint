@@ -1,0 +1,55 @@
+name: Breez Dependabot guard
+
+# Dependabot's NuGet ignore rules are not a reliable gate: the name-only ignore for
+# Breez.Sdk.Spark held while the pin was a plain version, and silently stopped working the day
+# the pin became a bracketed exact range (7823e2a, 2026-09-02) — Dependabot proposed a PR for
+# tag-only 0.24.1 the next morning (PR #65, 2026-09-03), defeating the policy that Breez bumps
+# arrive only from .github/workflows/breez-sdk-update.yml, which proposes a version only when
+# upstream has a *published GitHub Release* for it (see the comment on that workflow and on
+# dependabot.yml for why tag-only bumps are deliberate churn).
+#
+# This workflow enforces that policy at the PR layer instead of trusting the ignore: any PR
+# authored by Dependabot that names Breez.Sdk.Spark is closed and its branch deleted. Human
+# PRs (including hand-applied tag-only bumps) are untouched: the guard fires only for
+# dependabot[bot]. If a Dependabot quirk resurrects a PR, this closes it without a human ever
+# having to look at it.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  guard:
+    name: Close Dependabot Breez.Sdk.Spark PR
+    # Fails closed: a PR not authored by dependabot[bot], or already deleted before this job
+    # runs, is a no-op, not an error.
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      contains(github.event.pull_request.title, 'Breez.Sdk.Spark')
+    runs-on: ubuntu-latest
+    permissions:
+      # Deleting the guarded PR's branch needs contents; closing + commenting needs PRs.
+      contents: write
+      pull-requests: write
+    steps:
+      # No checkout needed: gh acts on the PR number directly.
+      - name: Close the PR and delete its branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          comment="$(cat <<BODY
+          Closed automatically by \`.github/workflows/breez-dependabot-guard.yml\`.
+
+          Dependabot's ignore for \`Breez.Sdk.Spark\` has a documented hole when the PackageReference
+          pin changes format (name-only ignore defeated by an exact-version bracket), so Breez bump
+          PRs must arrive only from \`.github/workflows/breez-sdk-update.yml\`, which proposes a
+          version only when upstream has a published GitHub Release for it. A tag-only fix worth
+          shipping early is bumped by hand.
+          BODY
+          )"
+          gh pr close "$PR" --comment "$comment" --delete-branch --repo "$GITHUB_REPOSITORY"
