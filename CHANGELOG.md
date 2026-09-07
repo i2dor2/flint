@@ -5,6 +5,37 @@ All notable changes to this plugin are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.1.0] — 2026-09-07
+
+A compatibility and CI-hardening release. No plugin source changed between 1.0.4 and this: the
+compiled assembly is the same code, rebuilt against BTCPay Server 2.4.4, and everything else
+lives in the automation that keeps the plugin watching upstream for the right changes.
+
+### Changed
+
+- **The plugin is built against BTCPay Server 2.4.4**, up from 2.4.2. Upstream tagged v2.4.3
+  hours before v2.4.4, and the bump to it was superseded the same day, so nothing shipped against
+  2.4.3. This is the release the plugin is compiled and tested against, not a new requirement: the
+  declared support floor is unchanged at 2.4.1, so every host that can run 1.0.4 can run this.
+  Validated before shipping: both committed `packages.lock.json` regenerated against the new graph
+  and proven by a locked-mode restore, a clean Release build, the unit suite green (1228 tests,
+  including the view-component compatibility guard) and the Postgres store contract green (102
+  tests on CI's digest-pinned postgres:17-alpine).
+- **The btcpayserver bump automation can no longer fail its own PRs.** Until now the bump step
+  edited the submodule but never the committed `packages.lock.json` files, so every bump PR failed
+  CI at Restore (locked mode) with `NU1004` — the v2.4.3 bump died exactly that way, hours before
+  this shipped. The bump step now restores against the new graph, re-verifies the locks under
+  locked mode as CI does, and commits them with the bump.
+- **Tag-only Breez SDK bumps can no longer get past the release gate.** Bump PRs for the Spark SDK
+  ship only from `.github/workflows/breez-sdk-update.yml`, which proposes a version only when
+  upstream has a *published GitHub Release* for it — but that policy rested on Dependabot's ignore,
+  which held while the pin was a plain version and silently stopped working once the pin became an
+  exact-version bracket: Dependabot proposed tag-only 0.24.1 (PR #65) the morning after the pin
+  format changed, and the leak was closed by hand. The ignore is hardened with a wildcard version
+  pattern, and a new `breez-dependabot-guard` workflow closes (and branch-deletes) any Dependabot
+  PR that names `Breez.Sdk.Spark` before a human sees it; human-made PRs, including the deliberate
+  hand-applied tag-only bumps, are untouched. The release gate is now enforced, not assumed.
+
 ## [1.0.4] — 2026-09-02
 
 ### Security
@@ -814,3 +845,4 @@ signet), the unrotated `sdk.log`, and the one SDK error classification with no a
 [1.0.2]: https://github.com/sethforprivacy/flint/releases/tag/v1.0.2
 [1.0.3]: https://github.com/sethforprivacy/flint/releases/tag/v1.0.3
 [1.0.4]: https://github.com/sethforprivacy/flint/releases/tag/v1.0.4
+[1.1.0]: https://github.com/sethforprivacy/flint/releases/tag/v1.1.0
