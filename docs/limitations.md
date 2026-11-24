@@ -157,6 +157,17 @@
   the wallet on-chain](deposits.md). Closing this properly would mean the plugin doing all the claiming itself,
   which trades an overpayment risk for a worse one — a claim loop that stops means no deposit ever arrives —
   and is not something to ship without mainnet evidence behind it.
+
+  **TODO (post-pilot, 2026-11-24):** the paragraph above describes the SDK as it was; the current SDK's
+  `MaxFee` *does* carry an amount-relative part now — `proportional_ppm`, a share of the deposit the claim
+  may cost on top of the on-chain component ([Claiming on-chain
+  deposits](https://docs.breez.technology/guide/onchain_claims.html#the-max-claim-fee)). The SSP's claim fee
+  grows with the deposit, so a rate-only ceiling like ours can refuse a perfectly cheap claim of a *large*
+  deposit, and it also keeps the Instant (0-conf) and Expedited (1–2 conf) claim tiers out of reach. Plan:
+  add `proportional_ppm` (official default guidance: 1000 = 0.1%) to the claim `MaxFee` handed to the SDK at
+  connect, surface it read-only next to the leeway on the deposit page, and re-measure claim behaviour on
+  mainnet with one real deposit before relying on it. This aligns with the official recommendation rather
+  than setting new policy: the manual-claim ceilings (25,000 sats, 50% of the deposit) stay as they are.
 - **The unilateral exit is manual, and narrower than the name suggests.** It is linked from every store's
   Advanced page, refuses to quote or build until an operator has accepted its disclosure, and carries four
   limits that do not show from the name alone. The plugin **never broadcasts**: it quotes, funds and signs, and the
